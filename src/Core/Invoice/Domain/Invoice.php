@@ -12,6 +12,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * @ORM\Entity
+ *
  * @ORM\Table(name="invoices")
  */
 class Invoice
@@ -20,13 +21,16 @@ class Invoice
 
     /**
      * @ORM\Id
+     *
      * @ORM\Column(type="integer", options={"unsigned"=true}, nullable=false)
+     *
      * @ORM\GeneratedValue(strategy="AUTO")
      */
     private ?int $id;
 
     /**
      * @ORM\ManyToOne(targetEntity="App\Core\User\Domain\User")
+     *
      * @ORM\JoinColumn(name="user_id", referencedColumnName="id", nullable=false)
      */
     private User $user;
@@ -41,14 +45,14 @@ class Invoice
      */
     private InvoiceStatus $status;
 
-    /**
-     * @param User $user
-     * @param int $amount
-     */
     public function __construct(User $user, int $amount)
     {
         if ($amount <= 0) {
             throw new InvoiceException('Kwota faktury musi być większa od 0');
+        }
+
+        if (!$user->hasActiveStatus()) {
+            throw new InvoiceException('Użytkownik jest nie aktywny, tylko aktywni użytkownicy mogą tworzyć nowe faktury.');
         }
 
         $this->id = null;

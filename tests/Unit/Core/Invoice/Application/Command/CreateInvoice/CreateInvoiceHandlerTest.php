@@ -35,9 +35,13 @@ class CreateInvoiceHandlerTest extends TestCase
         );
     }
 
-    public function test_handle_success(): void
+    public function testHandleSuccess(): void
     {
         $user = $this->createMock(User::class);
+        // One time in this test and one time in CreateInvoiceHandler
+        $user->expects($this->exactly(2))
+            ->method('hasActiveStatus')
+            ->willReturn(true);
 
         $invoice = new Invoice(
             $user, 12500
@@ -54,10 +58,10 @@ class CreateInvoiceHandlerTest extends TestCase
         $this->invoiceRepository->expects(self::once())
             ->method('flush');
 
-        $this->handler->__invoke((new CreateInvoiceCommand('test@test.pl', 12500)));
+        $this->handler->__invoke(new CreateInvoiceCommand('test@test.pl', 12500));
     }
 
-    public function test_handle_user_not_exists(): void
+    public function testHandleUserNotExists(): void
     {
         $this->expectException(UserNotFoundException::class);
 
@@ -65,13 +69,30 @@ class CreateInvoiceHandlerTest extends TestCase
             ->method('getByEmail')
             ->willThrowException(new UserNotFoundException());
 
-        $this->handler->__invoke((new CreateInvoiceCommand('test@test.pl', 12500)));
+        $this->handler->__invoke(new CreateInvoiceCommand('test@test.pl', 12500));
     }
 
-    public function test_handle_invoice_invalid_amount(): void
+    public function testHandleInvoiceInvalidAmount(): void
     {
         $this->expectException(InvoiceException::class);
 
-        $this->handler->__invoke((new CreateInvoiceCommand('test@test.pl', -5)));
+        $this->handler->__invoke(new CreateInvoiceCommand('test@test.pl', -5));
+    }
+
+    public function testHandleInvoiceInactiveUserStatus(): void
+    {
+        $this->expectException(InvoiceException::class);
+        $this->expectExceptionMessage('Użytkownik jest nie aktywny, tylko aktywni użytkownicy mogą tworzyć nowe faktury.');
+
+        $user = $this->createMock(User::class);
+        $user->expects(self::once())
+            ->method('hasActiveStatus')
+            ->willReturn(false);
+
+        $this->userRepository->expects(self::once())
+            ->method('getByEmail')
+            ->willReturn($user);
+
+        $this->handler->__invoke(new CreateInvoiceCommand('test@test.pl', 1));
     }
 }
